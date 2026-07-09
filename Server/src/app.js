@@ -2,8 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
-
 import config from './config/config.js';
+import authRouter from './routes/auth.routes.js';
 
 const app = express();
 
@@ -28,5 +28,9 @@ app.use(express.static('public'));
 app.get('/', (req, res) => {
     res.send('Welcome to the Business Nexus.');
 });
+
+// Auth routes
+app.use('/api/auth', authRouter);
+
 
 export default app;
