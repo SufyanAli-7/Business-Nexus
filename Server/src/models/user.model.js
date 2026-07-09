@@ -36,7 +36,7 @@ const userSchema = new Schema({
         type: Boolean,
         default: false
     },
-    
+
     // Entrepreneur specific fields
     startupName: {
         type: String,
@@ -90,6 +90,14 @@ const userSchema = new Schema({
     maximumInvestment: {
         type: String,
         default: ''
+    },
+    resetPasswordToken: {
+        type: String,
+        default: ''
+    },
+    resetPasswordExpiresAt: {
+        type: Date,
+        default: Date.now()
     }
 }, {
     timestamps: true
