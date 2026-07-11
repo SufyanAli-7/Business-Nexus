@@ -2,6 +2,10 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import AppProvider from './context/AppProvider';
 
+// Route Guards
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import PublicRoute from './components/auth/PublicRoute';
+
 // Layouts
 import { DashboardLayout } from './components/layout/DashboardLayout';
 
@@ -40,72 +44,77 @@ function App() {
     <Router>
       <AppProvider>
         <Routes>
-          {/* Authentication Routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
-          
-          {/* Dashboard Routes */}
-          <Route path="/dashboard" element={<DashboardLayout />}>
-            <Route path="entrepreneur" element={<EntrepreneurDashboard />} />
-            <Route path="investor" element={<InvestorDashboard />} />
-          </Route>
-          
-          {/* Profile Routes */}
-          <Route path="/profile" element={<DashboardLayout />}>
-            <Route path="entrepreneur/:id" element={<EntrepreneurProfile />} />
-            <Route path="investor/:id" element={<InvestorProfile />} />
-          </Route>
-          
-          {/* Feature Routes */}
-          <Route path="/investors" element={<DashboardLayout />}>
-            <Route index element={<InvestorsPage />} />
-          </Route>
-          
-          <Route path="/entrepreneurs" element={<DashboardLayout />}>
-            <Route index element={<EntrepreneursPage />} />
-          </Route>
-          
-          <Route path="/messages" element={<DashboardLayout />}>
-            <Route index element={<MessagesPage />} />
-          </Route>
-          
-          <Route path="/notifications" element={<DashboardLayout />}>
-            <Route index element={<NotificationsPage />} />
-          </Route>
-          
-          <Route path="/documents" element={<DashboardLayout />}>
-            <Route index element={<DocumentsPage />} />
-          </Route>
-          
-          <Route path="/settings" element={<DashboardLayout />}>
-            <Route index element={<SettingsPage />} />
-          </Route>
-          
-          <Route path="/help" element={<DashboardLayout />}>
-            <Route index element={<HelpPage />} />
-          </Route>
-          
-          <Route path="/deals" element={<DashboardLayout />}>
-            <Route index element={<DealsPage />} />
+          {/* ── Public Routes (redirect to dashboard if already logged in) ── */}
+          <Route element={<PublicRoute />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
           </Route>
 
-          <Route path="/meetings" element={<DashboardLayout />}>
-            <Route index element={<MeetingsPage />} />
+          {/* ── Protected Routes (redirect to /login if not authenticated) ── */}
+          <Route element={<ProtectedRoute />}>
+            {/* Dashboard */}
+            <Route path="/dashboard" element={<DashboardLayout />}>
+              <Route path="entrepreneur" element={<EntrepreneurDashboard />} />
+              <Route path="investor" element={<InvestorDashboard />} />
+            </Route>
+
+            {/* Profiles */}
+            <Route path="/profile" element={<DashboardLayout />}>
+              <Route path="entrepreneur/:id" element={<EntrepreneurProfile />} />
+              <Route path="investor/:id" element={<InvestorProfile />} />
+            </Route>
+
+            {/* Feature pages */}
+            <Route path="/investors" element={<DashboardLayout />}>
+              <Route index element={<InvestorsPage />} />
+            </Route>
+
+            <Route path="/entrepreneurs" element={<DashboardLayout />}>
+              <Route index element={<EntrepreneursPage />} />
+            </Route>
+
+            <Route path="/messages" element={<DashboardLayout />}>
+              <Route index element={<MessagesPage />} />
+            </Route>
+
+            <Route path="/notifications" element={<DashboardLayout />}>
+              <Route index element={<NotificationsPage />} />
+            </Route>
+
+            <Route path="/documents" element={<DashboardLayout />}>
+              <Route index element={<DocumentsPage />} />
+            </Route>
+
+            <Route path="/settings" element={<DashboardLayout />}>
+              <Route index element={<SettingsPage />} />
+            </Route>
+
+            <Route path="/help" element={<DashboardLayout />}>
+              <Route index element={<HelpPage />} />
+            </Route>
+
+            <Route path="/deals" element={<DashboardLayout />}>
+              <Route index element={<DealsPage />} />
+            </Route>
+
+            <Route path="/meetings" element={<DashboardLayout />}>
+              <Route index element={<MeetingsPage />} />
+            </Route>
+
+            {/* Chat */}
+            <Route path="/chat" element={<DashboardLayout />}>
+              <Route index element={<ChatPage />} />
+              <Route path=":userId" element={<ChatPage />} />
+            </Route>
           </Route>
-          
-          {/* Chat Routes */}
-          <Route path="/chat" element={<DashboardLayout />}>
-            <Route index element={<ChatPage />} />
-            <Route path=":userId" element={<ChatPage />} />
-          </Route>
-          
-          {/* Redirect root to login */}
+
+          {/* Root redirect – will bounce through ProtectedRoute / PublicRoute */}
           <Route path="/" element={<Navigate to="/login" replace />} />
-          
-          {/* Catch all other routes and redirect to login */}
+
+          {/* Catch-all */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </AppProvider>
