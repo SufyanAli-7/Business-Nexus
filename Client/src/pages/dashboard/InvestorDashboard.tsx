@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Users, PieChart, Filter, Search, PlusCircle } from 'lucide-react';
+import axios from 'axios';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
@@ -8,22 +9,47 @@ import { Badge } from '../../components/ui/Badge';
 import { EntrepreneurCard } from '../../components/entrepreneur/EntrepreneurCard';
 import { useAuth } from '../../context/AuthContext';
 import { Entrepreneur } from '../../types';
-import { entrepreneurs } from '../../data/users';
 import { getRequestsFromInvestor } from '../../data/collaborationRequests';
 
 export const InvestorDashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, backendUrl } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
-  
+  const [allEntrepreneurs, setAllEntrepreneurs] = useState<Entrepreneur[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setIsLoading(true);
+    axios.get(`${backendUrl || ''}/api/user?role=entrepreneur`)
+      .then(res => {
+        if (res.data.success) {
+          setAllEntrepreneurs(res.data.users);
+        }
+      })
+      .catch(err => {
+        console.error("Error fetching startups:", err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [backendUrl]);
+
   if (!user) return null;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
   
   // Get collaboration requests sent by this investor
   const sentRequests = getRequestsFromInvestor(user.id);
   const requestedEntrepreneurIds = sentRequests.map(req => req.entrepreneurId);
   
   // Filter entrepreneurs based on search and industry filters
-  const filteredEntrepreneurs = entrepreneurs.filter(entrepreneur => {
+  const filteredEntrepreneurs = allEntrepreneurs.filter(entrepreneur => {
     // Search filter
     const matchesSearch = searchQuery === '' || 
       entrepreneur.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -39,7 +65,7 @@ export const InvestorDashboard: React.FC = () => {
   });
   
   // Get unique industries for filter
-  const industries = Array.from(new Set(entrepreneurs.map(e => e.industry)));
+  const industries = Array.from(new Set(allEntrepreneurs.map(e => e.industry).filter(Boolean)));
   
   // Toggle industry selection
   const toggleIndustry = (industry: string) => {
@@ -110,7 +136,7 @@ export const InvestorDashboard: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-primary-700">Total Startups</p>
-                <h3 className="text-xl font-semibold text-primary-900">{entrepreneurs.length}</h3>
+                <h3 className="text-xl font-semibold text-primary-900">{allEntrepreneurs.length}</h3>
               </div>
             </div>
           </CardBody>

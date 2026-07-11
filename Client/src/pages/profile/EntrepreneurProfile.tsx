@@ -1,22 +1,49 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { MessageCircle, Users, Calendar, Building2, MapPin, UserCircle, FileText, DollarSign, Send } from 'lucide-react';
+import axios from 'axios';
 import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { useAuth } from '../../context/AuthContext';
-import { findUserById } from '../../data/users';
 import { createCollaborationRequest, getRequestsFromInvestor } from '../../data/collaborationRequests';
 import { Entrepreneur } from '../../types';
 
 export const EntrepreneurProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { user: currentUser } = useAuth();
-  
-  // Fetch entrepreneur data
-  const entrepreneur = findUserById(id || '') as Entrepreneur | null;
-  
+  const { user: currentUser, backendUrl } = useAuth();
+  const [entrepreneur, setEntrepreneur] = useState<Entrepreneur | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+    setIsLoading(true);
+    axios.get(`${backendUrl || ''}/api/user/${id}`)
+      .then((res) => {
+        if (res.data.success) {
+          setEntrepreneur(res.data.user);
+        } else {
+          setEntrepreneur(null);
+        }
+      })
+      .catch((err) => {
+        console.error("Error fetching entrepreneur profile:", err);
+        setEntrepreneur(null);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [id, backendUrl]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
   if (!entrepreneur || entrepreneur.role !== 'entrepreneur') {
     return (
       <div className="text-center py-12">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Users, Bell, Calendar, TrendingUp, AlertCircle, PlusCircle } from 'lucide-react';
+import axios from 'axios';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -9,12 +10,12 @@ import { InvestorCard } from '../../components/investor/InvestorCard';
 import { useAuth } from '../../context/AuthContext';
 import { CollaborationRequest } from '../../types';
 import { getRequestsForEntrepreneur } from '../../data/collaborationRequests';
-import { investors } from '../../data/users';
 
 export const EntrepreneurDashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, backendUrl } = useAuth();
   const [collaborationRequests, setCollaborationRequests] = useState<CollaborationRequest[]>([]);
-  const [recommendedInvestors, setRecommendedInvestors] = useState(investors.slice(0, 3));
+  const [recommendedInvestors, setRecommendedInvestors] = useState<any[]>([]);
+  const [isInvestorsLoading, setIsInvestorsLoading] = useState(true);
   
   useEffect(() => {
     if (user) {
@@ -23,6 +24,22 @@ export const EntrepreneurDashboard: React.FC = () => {
       setCollaborationRequests(requests);
     }
   }, [user]);
+
+  useEffect(() => {
+    setIsInvestorsLoading(true);
+    axios.get(`${backendUrl || ''}/api/user?role=investor`)
+      .then(res => {
+        if (res.data.success) {
+          setRecommendedInvestors(res.data.users.slice(0, 3));
+        }
+      })
+      .catch(err => {
+        console.error("Error fetching recommended investors:", err);
+      })
+      .finally(() => {
+        setIsInvestorsLoading(false);
+      });
+  }, [backendUrl]);
   
   const handleRequestStatusUpdate = (requestId: string, status: 'accepted' | 'rejected') => {
     setCollaborationRequests(prevRequests => 
@@ -158,13 +175,21 @@ export const EntrepreneurDashboard: React.FC = () => {
             </CardHeader>
             
             <CardBody className="space-y-4">
-              {recommendedInvestors.map(investor => (
-                <InvestorCard
-                  key={investor.id}
-                  investor={investor}
-                  showActions={false}
-                />
-              ))}
+              {isInvestorsLoading ? (
+                <div className="flex justify-center py-6">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
+                </div>
+              ) : recommendedInvestors.length > 0 ? (
+                recommendedInvestors.map(investor => (
+                  <InvestorCard
+                    key={investor.id}
+                    investor={investor}
+                    showActions={false}
+                  />
+                ))
+              ) : (
+                <p className="text-sm text-gray-500 text-center py-4">No recommended investors found</p>
+              )}
             </CardBody>
           </Card>
         </div>
