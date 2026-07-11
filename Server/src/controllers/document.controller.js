@@ -8,14 +8,21 @@ export const uploadDocument = async (req, res) => {
             return res.status(400).json({ success: false, message: "No file uploaded" });
         }
 
+        const extension = req.file.originalname.split('.').pop().toLowerCase();
+        let options = { resource_type: "auto" };
+        
+        // PDFs and documents should be uploaded as 'raw' to prevent Cloudinary restriction errors (mixed content, 401 unauthorized cover addon extraction blocks)
+        if (["pdf", "xlsx", "xls", "csv", "doc", "docx"].includes(extension)) {
+            options = { resource_type: "raw" };
+        }
+
         const localPath = req.file.path;
-        const uploadResult = await uploadOnCloudinary(localPath);
+        const uploadResult = await uploadOnCloudinary(localPath, options);
 
         if (!uploadResult) {
             return res.status(500).json({ success: false, message: "Failed to upload file to Cloudinary" });
         }
 
-        const extension = req.file.originalname.split('.').pop().toLowerCase();
         let type = "Document";
         if (extension === "pdf") {
             type = "PDF";

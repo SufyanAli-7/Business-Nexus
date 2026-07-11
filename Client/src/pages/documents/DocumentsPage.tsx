@@ -451,28 +451,39 @@ export const DocumentsPage: React.FC = () => {
           <div className="bg-white rounded-lg p-6 max-w-4xl w-full h-[90vh] shadow-xl flex flex-col">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900 truncate">{previewDoc.name}</h3>
-              <Button variant="outline" size="sm" onClick={() => setPreviewDoc(null)}>
-                Close
-              </Button>
+              <div className="flex space-x-2">
+                <Button variant="primary" size="sm" onClick={() => window.open(previewDoc.url.replace(/^http:/, 'https:'), '_blank')}>
+                  Open in New Tab
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setPreviewDoc(null)}>
+                  Close
+                </Button>
+              </div>
             </div>
             
             <div className="flex-1 bg-gray-100 rounded overflow-hidden relative">
               {previewDoc.type === 'PDF' ? (
-                <iframe
-                  src={previewDoc.url}
-                  className="w-full h-full border-none"
-                  title="Document Preview"
-                />
+                <object
+                  data={previewDoc.url.replace(/^http:/, 'https:')}
+                  type="application/pdf"
+                  className="w-full h-full"
+                >
+                  <iframe
+                    src={`https://docs.google.com/gview?url=${encodeURIComponent(previewDoc.url.replace(/^http:/, 'https:'))}&embedded=true`}
+                    className="w-full h-full border-none"
+                    title="Document Preview Fallback"
+                  />
+                </object>
               ) : previewDoc.type === 'Image' ? (
                 <div className="w-full h-full flex items-center justify-center p-4">
-                  <img src={previewDoc.url} alt={previewDoc.name} className="max-w-full max-h-full object-contain" />
+                  <img src={previewDoc.url.replace(/^http:/, 'https:')} alt={previewDoc.name} className="max-w-full max-h-full object-contain" />
                 </div>
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center">
                   <FileText size={64} className="text-gray-400 mb-3" />
                   <p className="text-gray-700 font-medium">Preview not available for {previewDoc.type} files.</p>
-                  <Button variant="primary" size="sm" className="mt-4" onClick={() => window.open(previewDoc.url, '_blank')}>
-                    Download to view
+                  <Button variant="primary" size="sm" className="mt-4" onClick={() => window.open(previewDoc.url.replace(/^http:/, 'https:'), '_blank')}>
+                    Open to view
                   </Button>
                 </div>
               )}
