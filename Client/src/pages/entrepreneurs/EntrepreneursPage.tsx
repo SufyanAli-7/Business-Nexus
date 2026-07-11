@@ -1,27 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Filter, MapPin } from 'lucide-react';
+import axios from 'axios';
 import { Input } from '../../components/ui/Input';
 import { Card, CardHeader, CardBody } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { EntrepreneurCard } from '../../components/entrepreneur/EntrepreneurCard';
-import { entrepreneurs } from '../../data/users';
+import { useAuth } from '../../context/AuthContext';
+import { Entrepreneur } from '../../types';
 
 export const EntrepreneursPage: React.FC = () => {
+  const { backendUrl } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
   const [selectedFundingRange, setSelectedFundingRange] = useState<string[]>([]);
+  const [allEntrepreneurs, setAllEntrepreneurs] = useState<Entrepreneur[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setIsLoading(true);
+    axios.get(`${backendUrl || ''}/api/user?role=entrepreneur`)
+      .then(res => {
+        if (res.data.success) {
+          const mapped = res.data.users.map((u: any) => ({ ...u, id: u.id || u._id }));
+          setAllEntrepreneurs(mapped);
+        }
+      })
+      .catch(err => {
+        console.error("Error fetching entrepreneurs:", err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [backendUrl]);
   
   // Get unique industries and funding ranges
-  const allIndustries = Array.from(new Set(entrepreneurs.map(e => e.industry)));
+  const allIndustries = Array.from(new Set(allEntrepreneurs.map(e => e.industry).filter(Boolean)));
   const fundingRanges = ['< $500K', '$500K - $1M', '$1M - $5M', '> $5M'];
   
   // Filter entrepreneurs based on search and filters
-  const filteredEntrepreneurs = entrepreneurs.filter(entrepreneur => {
+  const filteredEntrepreneurs = allEntrepreneurs.filter(entrepreneur => {
     const matchesSearch = searchQuery === '' || 
       entrepreneur.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      entrepreneur.startupName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      entrepreneur.industry.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      entrepreneur.pitchSummary.toLowerCase().includes(searchQuery.toLowerCase());
+      (entrepreneur.startupName && entrepreneur.startupName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (entrepreneur.industry && entrepreneur.industry.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (entrepreneur.pitchSummary && entrepreneur.pitchSummary.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesIndustry = selectedIndustries.length === 0 ||
       selectedIndustries.includes(entrepreneur.industry);
@@ -29,7 +51,9 @@ export const EntrepreneursPage: React.FC = () => {
     // Simple funding range filter based on the amount string
     const matchesFunding = selectedFundingRange.length === 0 || 
       selectedFundingRange.some(range => {
+        if (!entrepreneur.fundingNeeded) return false;
         const amount = parseInt(entrepreneur.fundingNeeded.replace(/[^0-9]/g, ''));
+        if (isNaN(amount)) return false;
         switch (range) {
           case '< $500K': return amount < 500;
           case '$500K - $1M': return amount >= 500 && amount <= 1000;
@@ -41,6 +65,14 @@ export const EntrepreneursPage: React.FC = () => {
     
     return matchesSearch && matchesIndustry && matchesFunding;
   });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
   
   const toggleIndustry = (industry: string) => {
     setSelectedIndustries(prev => 

@@ -84,4 +84,5 @@ export interface AuthContextType {
   dispatch?: React.Dispatch<any>;
   backendUrl?: string;
   readProfile?: () => void;
+  socket?: any;
 }

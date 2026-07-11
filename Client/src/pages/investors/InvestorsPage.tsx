@@ -1,37 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Filter, MapPin } from 'lucide-react';
+import axios from 'axios';
 import { Input } from '../../components/ui/Input';
 import { Card, CardHeader, CardBody } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { InvestorCard } from '../../components/investor/InvestorCard';
-import { investors } from '../../data/users';
+import { useAuth } from '../../context/AuthContext';
+import { Investor } from '../../types';
 
 export const InvestorsPage: React.FC = () => {
+  const { backendUrl } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStages, setSelectedStages] = useState<string[]>([]);
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+  const [allInvestors, setAllInvestors] = useState<Investor[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setIsLoading(true);
+    axios.get(`${backendUrl || ''}/api/user?role=investor`)
+      .then(res => {
+        if (res.data.success) {
+          const mapped = res.data.users.map((u: any) => ({ ...u, id: u.id || u._id }));
+          setAllInvestors(mapped);
+        }
+      })
+      .catch(err => {
+        console.error("Error fetching investors:", err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [backendUrl]);
   
   // Get unique investment stages and interests
-  const allStages = Array.from(new Set(investors.flatMap(i => i.investmentStage)));
-  const allInterests = Array.from(new Set(investors.flatMap(i => i.investmentInterests)));
+  const allStages = Array.from(new Set(allInvestors.flatMap(i => i.investmentStage || []).filter(Boolean)));
+  const allInterests = Array.from(new Set(allInvestors.flatMap(i => i.investmentInterests || []).filter(Boolean)));
   
   // Filter investors based on search and filters
-  const filteredInvestors = investors.filter(investor => {
+  const filteredInvestors = allInvestors.filter(investor => {
     const matchesSearch = searchQuery === '' || 
       investor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      investor.bio.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      investor.investmentInterests.some(interest => 
+      (investor.bio && investor.bio.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (investor.investmentInterests && investor.investmentInterests.some(interest => 
         interest.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      ));
     
     const matchesStages = selectedStages.length === 0 ||
-      investor.investmentStage.some(stage => selectedStages.includes(stage));
+      (investor.investmentStage && investor.investmentStage.some(stage => selectedStages.includes(stage)));
     
     const matchesInterests = selectedInterests.length === 0 ||
-      investor.investmentInterests.some(interest => selectedInterests.includes(interest));
+      (investor.investmentInterests && investor.investmentInterests.some(interest => selectedInterests.includes(interest)));
     
     return matchesSearch && matchesStages && matchesInterests;
   });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
   
   const toggleStage = (stage: string) => {
     setSelectedStages(prev => 

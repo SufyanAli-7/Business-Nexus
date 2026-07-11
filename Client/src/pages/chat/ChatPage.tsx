@@ -1,62 +1,125 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { Send, Phone, Video, Info, Smile } from 'lucide-react';
+import axios from 'axios';
 import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { ChatMessage } from '../../components/chat/ChatMessage';
 import { ChatUserList } from '../../components/chat/ChatUserList';
 import { useAuth } from '../../context/AuthContext';
-import { Message } from '../../types';
-import { findUserById } from '../../data/users';
-import { getMessagesBetweenUsers, sendMessage, getConversationsForUser } from '../../data/messages';
+import { Message, User } from '../../types';
 import { MessageCircle } from 'lucide-react';
 
 export const ChatPage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, backendUrl, socket } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [conversations, setConversations] = useState<any[]>([]);
+  const [chatPartner, setChatPartner] = useState<User | null>(null);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
   
-  const chatPartner = userId ? findUserById(userId) : null;
-  
+  const fetchConversations = () => {
+    if (!backendUrl) return;
+    axios.get(`${backendUrl}/api/message/conversations`)
+      .then(res => {
+        if (res.data.success) {
+          setConversations(res.data.conversations);
+        }
+      })
+      .catch(err => console.error("Error fetching conversations:", err));
+  };
+
   useEffect(() => {
-    // Load conversations
-    if (currentUser) {
-      setConversations(getConversationsForUser(currentUser.id));
+    fetchConversations();
+  }, [backendUrl]);
+
+  // Load chat partner profile info dynamically from backend
+  useEffect(() => {
+    if (userId && backendUrl) {
+      axios.get(`${backendUrl}/api/user/${userId}`)
+        .then(res => {
+          if (res.data.success) {
+            const u = res.data.user;
+            if (u) u.id = u.id || u._id;
+            setChatPartner(u);
+          }
+        })
+        .catch(err => {
+          console.error("Error fetching chat partner profile:", err);
+          setChatPartner(null);
+        });
+    } else {
+      setChatPartner(null);
     }
-  }, [currentUser]);
-  
+  }, [userId, backendUrl]);
+
+  // Fetch messages between users
   useEffect(() => {
-    // Load messages between users
-    if (currentUser && userId) {
-      setMessages(getMessagesBetweenUsers(currentUser.id, userId));
+    if (currentUser && userId && backendUrl) {
+      setIsHistoryLoading(true);
+      axios.get(`${backendUrl}/api/message/${userId}`)
+        .then(res => {
+          if (res.data.success) {
+            setMessages(res.data.messages);
+          }
+        })
+        .catch(err => {
+          console.error("Error fetching chat messages:", err);
+        })
+        .finally(() => {
+          setIsHistoryLoading(false);
+        });
+    } else {
+      setMessages([]);
     }
-  }, [currentUser, userId]);
-  
+  }, [currentUser, userId, backendUrl]);
+
+  // Listen for realtime messages
   useEffect(() => {
-    // Scroll to bottom of messages
+    if (socket) {
+      const handleNewMessage = (msg: Message) => {
+        // If message belongs to active conversation thread
+        if (
+          (msg.senderId === currentUser?.id && msg.receiverId === userId) ||
+          (msg.senderId === userId && msg.receiverId === currentUser?.id)
+        ) {
+          setMessages(prev => {
+            // Avoid duplicate appends if already present
+            if (prev.some(m => m.id === msg.id)) return prev;
+            return [...prev, msg];
+          });
+        }
+        
+        // Refresh sidebar conversation list
+        fetchConversations();
+      };
+
+      socket.on("receive_message", handleNewMessage);
+      return () => {
+        socket.off("receive_message", handleNewMessage);
+      };
+    }
+  }, [socket, userId, currentUser]);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-  
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newMessage.trim() || !currentUser || !userId) return;
+    if (!newMessage.trim() || !currentUser || !userId || !socket) return;
     
-    const message = sendMessage({
+    socket.emit("send_message", {
       senderId: currentUser.id,
       receiverId: userId,
       content: newMessage
     });
     
-    setMessages([...messages, message]);
     setNewMessage('');
-    
-    // Update conversations
-    setConversations(getConversationsForUser(currentUser.id));
   };
   
   if (!currentUser) return null;
@@ -123,7 +186,11 @@ export const ChatPage: React.FC = () => {
             
             {/* Messages container */}
             <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
-              {messages.length > 0 ? (
+              {isHistoryLoading ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
+                </div>
+              ) : messages.length > 0 ? (
                 <div className="space-y-4">
                   {messages.map(message => (
                     <ChatMessage

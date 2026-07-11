@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect, useReducer } fro
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { io, Socket } from 'socket.io-client';
 import { User, UserRole, AuthContextType } from '../types';
 
 // Create Auth Context
@@ -30,8 +31,30 @@ export const AuthContextProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const [state, dispatch] = useReducer(reducer, initialState);
     const navigate = useNavigate();
     const [isAppLoading, setIsAppLoading] = useState(true);
+    const [socket, setSocket] = useState<Socket | null>(null);
 
     const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+
+    useEffect(() => {
+        if (state.isAuth && state.user && state.user.id) {
+            const socketUrl = backendUrl;
+            const newSocket = io(socketUrl, {
+                withCredentials: true
+            });
+
+            newSocket.emit("register", state.user.id);
+            setSocket(newSocket);
+
+            console.log("Client connected to Socket.IO and registered room:", state.user.id);
+
+            return () => {
+                newSocket.disconnect();
+                console.log("Client disconnected from Socket.IO");
+            };
+        } else {
+            setSocket(null);
+        }
+    }, [state.isAuth, state.user, backendUrl]);
 
     const readProfile = () => {
         axios.defaults.withCredentials = true;
@@ -184,6 +207,7 @@ export const AuthContextProvider: React.FC<{ children: React.ReactNode }> = ({ c
             forgotPassword,
             resetPassword,
             updateProfile,
+            socket,
             isAuthenticated: state.isAuth, // compatibility alias
             isLoading: isAppLoading,       // compatibility alias
             logout: handleLogout          // compatibility alias

@@ -5,6 +5,8 @@ import cookieParser from 'cookie-parser';
 import config from './config/config.js';
 import authRouter from './routes/auth.routes.js';
 import userRouter from './routes/user.routes.js';
+import messageRouter from './routes/message.routes.js';
+import { getIO } from './services/socket.service.js';
 
 const app = express();
 
@@ -22,6 +24,16 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(cookieParser());
 
+// Inject socket.io to req object
+app.use((req, res, next) => {
+    try {
+        req.io = getIO();
+    } catch (e) {
+        // Socket.io not initialized
+    }
+    next();
+});
+
 // Serve static public folder (for uploaded avatars and project images)
 app.use(express.static('public'));
 
@@ -33,5 +45,5 @@ app.get('/', (req, res) => {
 // Auth routes
 app.use('/api/auth', authRouter);
 app.use('/api/user', userRouter);
-
+app.use('/api/message', messageRouter);
 export default app;
