@@ -132,7 +132,7 @@ export const sendResetMail = async (req, res) => {
 		const resetUrl = `${config.FRONTEND_URL}/reset-password/${resetToken}`;
 
 		// Send reset email
-		await sendEmail(user.email, "Forgot Password", getPasswordResetMailHtml(user.email, resetUrl));
+		await sendEmail(user.email, "Forgot Password", getPasswordResetMailHtml(resetUrl, user.role, user.name));
 
         res.status(200).json({success: true, message: 'Password reset link has been sent to your email'});
     } catch (error) {
@@ -164,7 +164,7 @@ export const resetPassword = async (req, res) => {
 		user.resetPasswordExpiresAt = undefined;
 		await user.save();
 
-		await sendEmail(user.email, "Password Reset Successful", getResetPasswordSuccessEmail(user.email));
+		await sendEmail(user.email, "Password Reset Successful", getResetPasswordSuccessEmail(user.role, user.name));
 
 		res.status(200).json({ success: true, message: "Password reset successful" });
 	} catch (error) {
