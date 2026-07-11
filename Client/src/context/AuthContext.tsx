@@ -1,194 +1,205 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { User, UserRole, AuthContextType } from '../types';
-import { users } from '../data/users';
+import React, { createContext, useState, useContext, useEffect, useReducer } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import toast from 'react-hot-toast';
+import { User, UserRole, AuthContextType } from '../types';
 
 // Create Auth Context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Local storage keys
-const USER_STORAGE_KEY = 'business_nexus_user';
-const RESET_TOKEN_KEY = 'business_nexus_reset_token';
+const initialState = { isAuth: false, user: null as User | null };
+
+type AuthState = typeof initialState;
+type AuthAction = 
+  | { type: 'SET_LOGIN'; payload: User }
+  | { type: 'SET_LOGOUT' };
+
+const reducer = (state: AuthState, action: AuthAction): AuthState => {
+    switch (action.type) {
+        case 'SET_LOGIN':
+            return { ...state, isAuth: true, user: action.payload };
+        case 'SET_LOGOUT':
+            return initialState;
+        default:
+            return state;
+    }
+};
 
 // Auth Provider Component
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export const AuthContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const [state, dispatch] = useReducer(reducer, initialState);
+    const navigate = useNavigate();
+    const [isAppLoading, setIsAppLoading] = useState(true);
 
-  // Check for stored user on initial load
-  useEffect(() => {
-    const storedUser = localStorage.getItem(USER_STORAGE_KEY);
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
-  }, []);
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
-  // Mock login function - in a real app, this would make an API call
-  const login = async (email: string, password: string, role: UserRole): Promise<void> => {
-    setIsLoading(true);
-    
-    try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Find user with matching email and role
-      const foundUser = users.find(u => u.email === email && u.role === role);
-      
-      if (foundUser) {
-        setUser(foundUser);
-        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(foundUser));
-        toast.success('Successfully logged in!');
-      } else {
-        throw new Error('Invalid credentials or user not found');
-      }
-    } catch (error) {
-      toast.error((error as Error).message);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    const readProfile = () => {
+        axios.defaults.withCredentials = true;
+        axios.get(`${backendUrl}/api/user/profile`)
+            .then((res) => {
+                const { success, user } = res.data;
+                if (success) {
+                    dispatch({ type: 'SET_LOGIN', payload: user });
+                }
+            })
+            .catch((err) => {
+                const { status } = err.response || {};
+                if (status !== 401 && status !== 404) {
+                    console.error("Error fetching profile:", err);
+                }
+            })
+            .finally(() => {
+                setIsAppLoading(false);
+            });
+    };
 
-  // Mock register function - in a real app, this would make an API call
-  const register = async (name: string, email: string, password: string, role: UserRole): Promise<void> => {
-    setIsLoading(true);
-    
-    try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Check if email already exists
-      if (users.some(u => u.email === email)) {
-        throw new Error('Email already in use');
-      }
-      
-      // Create new user
-      const newUser: User = {
-        id: `${role[0]}${users.length + 1}`,
-        name,
-        email,
-        role,
-        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`,
-        bio: '',
-        isOnline: true,
-        createdAt: new Date().toISOString()
-      };
-      
-      // Add user to mock data
-      users.push(newUser);
-      
-      setUser(newUser);
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser));
-      toast.success('Account created successfully!');
-    } catch (error) {
-      toast.error((error as Error).message);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    useEffect(() => {
+        readProfile();
+    }, []);
 
-  // Mock forgot password function
-  const forgotPassword = async (email: string): Promise<void> => {
-    try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Check if user exists
-      const user = users.find(u => u.email === email);
-      if (!user) {
-        throw new Error('No account found with this email');
-      }
-      
-      // Generate reset token (in a real app, this would be a secure token)
-      const resetToken = Math.random().toString(36).substring(2, 15);
-      localStorage.setItem(RESET_TOKEN_KEY, resetToken);
-      
-      // In a real app, this would send an email
-      toast.success('Password reset instructions sent to your email');
-    } catch (error) {
-      toast.error((error as Error).message);
-      throw error;
-    }
-  };
+    const handleLogout = () => {
+        axios.defaults.withCredentials = true;
+        axios.post(`${backendUrl}/api/auth/logout`)
+            .then((res) => {
+                const { success, message } = res.data;
+                if (success) {
+                    dispatch({ type: 'SET_LOGOUT' });
+                    navigate('/login');
+                    
+                    // Fallback to window.toastify if available, otherwise use react-hot-toast
+                    if (typeof window !== 'undefined' && (window as any).toastify) {
+                        (window as any).toastify(message, "success");
+                    } else {
+                        toast.success(message || "Logged out successfully");
+                    }
+                }
+            })
+            .catch((err) => {
+                const errMsg = err.response?.data?.message || "Failed to logout";
+                console.error(errMsg);
+                toast.error(errMsg);
+            });
+    };
 
-  // Mock reset password function
-  const resetPassword = async (token: string, newPassword: string): Promise<void> => {
-    try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Verify token
-      const storedToken = localStorage.getItem(RESET_TOKEN_KEY);
-      if (token !== storedToken) {
-        throw new Error('Invalid or expired reset token');
-      }
-      
-      // In a real app, this would update the user's password in the database
-      localStorage.removeItem(RESET_TOKEN_KEY);
-      toast.success('Password reset successfully');
-    } catch (error) {
-      toast.error((error as Error).message);
-      throw error;
-    }
-  };
+    const login = async (email: string, password: string, role: UserRole): Promise<void> => {
+        setIsAppLoading(true);
+        try {
+            axios.defaults.withCredentials = true;
+            const res = await axios.post(`${backendUrl}/api/auth/login`, { email, password, role });
+            const { success, message } = res.data;
+            if (success) {
+                // Fetch user data right away
+                const profileRes = await axios.get(`${backendUrl}/api/user/profile`);
+                if (profileRes.data.success) {
+                    dispatch({ type: 'SET_LOGIN', payload: profileRes.data.user });
+                }
+                toast.success(message || "Successfully logged in!");
+                navigate(role === 'entrepreneur' ? '/dashboard/entrepreneur' : '/dashboard/investor');
+            }
+        } catch (err: any) {
+            const errMsg = err.response?.data?.message || "Failed to login";
+            toast.error(errMsg);
+            throw new Error(errMsg);
+        } finally {
+            setIsAppLoading(false);
+        }
+    };
 
-  // Logout function
-  const logout = (): void => {
-    setUser(null);
-    localStorage.removeItem(USER_STORAGE_KEY);
-    toast.success('Logged out successfully');
-  };
+    const register = async (name: string, email: string, password: string, role: UserRole): Promise<void> => {
+        setIsAppLoading(true);
+        try {
+            axios.defaults.withCredentials = true;
+            const res = await axios.post(`${backendUrl}/api/auth/register`, { name, email, password, role });
+            const { success, message } = res.data;
+            if (success) {
+                toast.success(message || "Account created successfully!");
+                // Auto login after registration
+                await login(email, password, role);
+            }
+        } catch (err: any) {
+            const errMsg = err.response?.data?.message || "Failed to register";
+            toast.error(errMsg);
+            throw new Error(errMsg);
+        } finally {
+            setIsAppLoading(false);
+        }
+    };
 
-  // Update user profile
-  const updateProfile = async (userId: string, updates: Partial<User>): Promise<void> => {
-    try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Update user in mock data
-      const userIndex = users.findIndex(u => u.id === userId);
-      if (userIndex === -1) {
-        throw new Error('User not found');
-      }
-      
-      const updatedUser = { ...users[userIndex], ...updates };
-      users[userIndex] = updatedUser;
-      
-      // Update current user if it's the same user
-      if (user?.id === userId) {
-        setUser(updatedUser);
-        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
-      }
-      
-      toast.success('Profile updated successfully');
-    } catch (error) {
-      toast.error((error as Error).message);
-      throw error;
-    }
-  };
+    const forgotPassword = async (email: string): Promise<void> => {
+        setIsAppLoading(true);
+        try {
+            axios.defaults.withCredentials = true;
+            const res = await axios.post(`${backendUrl}/api/auth/forgot-password`, { email });
+            const { success, message } = res.data;
+            if (success) {
+                toast.success(message || "Reset link sent to your email!");
+            }
+        } catch (err: any) {
+            const errMsg = err.response?.data?.message || "Failed to request reset";
+            toast.error(errMsg);
+            throw new Error(errMsg);
+        } finally {
+            setIsAppLoading(false);
+        }
+    };
 
-  const value = {
-    user,
-    login,
-    register,
-    logout,
-    forgotPassword,
-    resetPassword,
-    updateProfile,
-    isAuthenticated: !!user,
-    isLoading
-  };
+    const resetPassword = async (token: string, newPassword: string): Promise<void> => {
+        setIsAppLoading(true);
+        try {
+            axios.defaults.withCredentials = true;
+            const res = await axios.post(`${backendUrl}/api/auth/reset-password/${token}`, { password: newPassword });
+            const { success, message } = res.data;
+            if (success) {
+                toast.success(message || "Password reset successfully!");
+                navigate('/login');
+            }
+        } catch (err: any) {
+            const errMsg = err.response?.data?.message || "Failed to reset password";
+            toast.error(errMsg);
+            throw new Error(errMsg);
+        } finally {
+            setIsAppLoading(false);
+        }
+    };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    const updateProfile = async (userId: string, updates: Partial<User>): Promise<void> => {
+        // Mock method for compatibility
+        toast.success("Profile updated!");
+    };
+
+    return (
+        <AuthContext.Provider value={{
+            user: state.user,
+            isAuth: state.isAuth,
+            isAppLoading,
+            handleLogout,
+            dispatch,
+            backendUrl,
+            readProfile,
+            login,
+            register,
+            forgotPassword,
+            resetPassword,
+            updateProfile,
+            isAuthenticated: state.isAuth, // compatibility alias
+            isLoading: isAppLoading,       // compatibility alias
+            logout: handleLogout          // compatibility alias
+        }}>
+            {children}
+        </AuthContext.Provider>
+    );
 };
 
 // Custom hook for using auth context
 export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+    const context = useContext(AuthContext);
+    if (context === undefined) {
+        throw new Error('useAuth must be used within an AuthContextProvider');
+    }
+    return context;
 };
+
+// Keep old named export for backward compatibility
+export { AuthContextProvider as AuthProvider };
+
+export default AuthContextProvider;

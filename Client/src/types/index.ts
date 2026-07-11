@@ -78,4 +78,10 @@ export interface AuthContextType {
   updateProfile: (userId: string, updates: Partial<User>) => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isAuth?: boolean;
+  isAppLoading?: boolean;
+  handleLogout?: () => void;
+  dispatch?: React.Dispatch<any>;
+  backendUrl?: string;
+  readProfile?: () => void;
 }
