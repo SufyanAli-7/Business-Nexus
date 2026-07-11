@@ -38,8 +38,9 @@ export const AuthContextProvider: React.FC<{ children: React.ReactNode }> = ({ c
         axios.get(`${backendUrl}/api/user/profile`)
             .then((res) => {
                 const { success, user } = res.data;
-                if (success) {
-                    dispatch({ type: 'SET_LOGIN', payload: user });
+                if (success && user) {
+                    const formattedUser = { ...user, id: user.id || user._id };
+                    dispatch({ type: 'SET_LOGIN', payload: formattedUser });
                 }
             })
             .catch((err) => {
@@ -90,8 +91,10 @@ export const AuthContextProvider: React.FC<{ children: React.ReactNode }> = ({ c
             if (success) {
                 // Fetch user data right away
                 const profileRes = await axios.get(`${backendUrl}/api/user/profile`);
-                if (profileRes.data.success) {
-                    dispatch({ type: 'SET_LOGIN', payload: profileRes.data.user });
+                if (profileRes.data.success && profileRes.data.user) {
+                    const profileUser = profileRes.data.user;
+                    const formattedUser = { ...profileUser, id: profileUser.id || profileUser._id };
+                    dispatch({ type: 'SET_LOGIN', payload: formattedUser });
                 }
                 toast.success(message || "Successfully logged in!");
                 navigate(role === 'entrepreneur' ? '/dashboard/entrepreneur' : '/dashboard/investor');

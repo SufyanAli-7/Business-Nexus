@@ -21,7 +21,9 @@ export const InvestorProfile: React.FC = () => {
     axios.get(`${backendUrl || ''}/api/user/${id}`)
       .then((res) => {
         if (res.data.success) {
-          setInvestor(res.data.user);
+          const u = res.data.user;
+          if (u) u.id = u.id || u._id;
+          setInvestor(u);
         } else {
           setInvestor(null);
         }

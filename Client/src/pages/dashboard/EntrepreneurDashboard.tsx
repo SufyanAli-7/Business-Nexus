@@ -30,7 +30,8 @@ export const EntrepreneurDashboard: React.FC = () => {
     axios.get(`${backendUrl || ''}/api/user?role=investor`)
       .then(res => {
         if (res.data.success) {
-          setRecommendedInvestors(res.data.users.slice(0, 3));
+          const mapped = res.data.users.map((u: any) => ({ ...u, id: u.id || u._id }));
+          setRecommendedInvestors(mapped.slice(0, 3));
         }
       })
       .catch(err => {

@@ -100,7 +100,9 @@ const userSchema = new Schema({
         default: Date.now()
     }
 }, {
-    timestamps: true
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
 });
 
 const User = mongoose.model("User", userSchema);

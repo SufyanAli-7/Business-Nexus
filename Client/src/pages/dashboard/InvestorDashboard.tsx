@@ -23,7 +23,8 @@ export const InvestorDashboard: React.FC = () => {
     axios.get(`${backendUrl || ''}/api/user?role=entrepreneur`)
       .then(res => {
         if (res.data.success) {
-          setAllEntrepreneurs(res.data.users);
+          const mapped = res.data.users.map((u: any) => ({ ...u, id: u.id || u._id }));
+          setAllEntrepreneurs(mapped);
         }
       })
       .catch(err => {

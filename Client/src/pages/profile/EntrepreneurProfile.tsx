@@ -22,7 +22,9 @@ export const EntrepreneurProfile: React.FC = () => {
     axios.get(`${backendUrl || ''}/api/user/${id}`)
       .then((res) => {
         if (res.data.success) {
-          setEntrepreneur(res.data.user);
+          const u = res.data.user;
+          if (u) u.id = u.id || u._id;
+          setEntrepreneur(u);
         } else {
           setEntrepreneur(null);
         }
