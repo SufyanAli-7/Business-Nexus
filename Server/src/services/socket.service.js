@@ -49,6 +49,27 @@ export const initSocket = (server) => {
             }
         });
 
+        // WebRTC Signaling handlers
+        socket.on("call_user", (data) => {
+            const { callerId, receiverId, offer } = data;
+            io.to(receiverId).emit("incoming_call", { callerId, offer });
+        });
+
+        socket.on("answer_call", (data) => {
+            const { callerId, receiverId, answer } = data;
+            io.to(callerId).emit("call_accepted", { receiverId, answer });
+        });
+
+        socket.on("ice_candidate", (data) => {
+            const { senderId, receiverId, candidate } = data;
+            io.to(receiverId).emit("ice_candidate", { senderId, candidate });
+        });
+
+        socket.on("end_call", (data) => {
+            const { senderId, receiverId } = data;
+            io.to(receiverId).emit("call_ended", { senderId });
+        });
+
         socket.on("disconnect", () => {
             console.log(`User disconnected: ${socket.id}`);
         });
