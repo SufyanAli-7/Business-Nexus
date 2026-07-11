@@ -108,18 +108,35 @@ export const ChatPage: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newMessage.trim() || !currentUser || !userId || !socket) return;
+    if (!newMessage.trim() || !currentUser || !userId) return;
     
-    socket.emit("send_message", {
-      senderId: currentUser.id,
-      receiverId: userId,
-      content: newMessage
-    });
-    
+    const messageContent = newMessage;
     setNewMessage('');
+    
+    try {
+      if (socket && socket.connected) {
+        socket.emit("send_message", {
+          senderId: currentUser.id,
+          receiverId: userId,
+          content: messageContent
+        });
+      } else {
+        console.warn("Socket not connected or disconnected, falling back to HTTP POST");
+        const res = await axios.post(`${backendUrl}/api/message`, {
+          receiverId: userId,
+          content: messageContent
+        });
+        if (res.data.success) {
+          setMessages(prev => [...prev, res.data.message]);
+          fetchConversations();
+        }
+      }
+    } catch (err) {
+      console.error("Error sending message:", err);
+    }
   };
   
   if (!currentUser) return null;
@@ -197,6 +214,7 @@ export const ChatPage: React.FC = () => {
                       key={message.id}
                       message={message}
                       isCurrentUser={message.senderId === currentUser.id}
+                      senderUser={message.senderId === currentUser.id ? currentUser : chatPartner}
                     />
                   ))}
                   <div ref={messagesEndRef} />

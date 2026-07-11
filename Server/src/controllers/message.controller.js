@@ -1,4 +1,5 @@
 import Message from "../models/message.model.js";
+import User from "../models/user.model.js";
 
 export const getConversations = async (req, res) => {
     try {
@@ -32,7 +33,27 @@ export const getConversations = async (req, res) => {
             }
         });
 
-        const conversations = Object.values(conversationsMap);
+        const otherUserIds = Object.keys(conversationsMap);
+        const users = await User.find({ _id: { $in: otherUserIds } }).select("name avatarUrl isOnline role");
+        
+        const usersMap = {};
+        users.forEach(u => {
+            usersMap[u._id.toString()] = {
+                id: u._id.toString(),
+                name: u.name,
+                avatarUrl: u.avatarUrl,
+                isOnline: u.isOnline,
+                role: u.role
+            };
+        });
+
+        const conversations = Object.values(conversationsMap).map(conv => {
+            const otherId = conv.id;
+            return {
+                ...conv,
+                otherUser: usersMap[otherId] || null
+            };
+        });
 
         return res.status(200).json({ success: true, conversations });
     } catch (error) {
