@@ -8,6 +8,6 @@ authRouter.post('/login', login);
 authRouter.post('/logout', logout);
 
 authRouter.post('/forgot-password', sendResetMail);
-authRouter.post('/reset-password', resetPassword);
+authRouter.post('/reset-password/:token', resetPassword);
 
 export default authRouter;
