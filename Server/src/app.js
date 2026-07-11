@@ -6,6 +6,7 @@ import config from './config/config.js';
 import authRouter from './routes/auth.routes.js';
 import userRouter from './routes/user.routes.js';
 import messageRouter from './routes/message.routes.js';
+import notificationRouter from './routes/notification.routes.js';
 import { getIO } from './services/socket.service.js';
 
 const app = express();
@@ -46,4 +47,5 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRouter);
 app.use('/api/user', userRouter);
 app.use('/api/message', messageRouter);
+app.use('/api/notification', notificationRouter);
 export default app;
