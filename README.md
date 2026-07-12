@@ -129,3 +129,37 @@ Make sure you have [Node.js](https://nodejs.org/) and [MongoDB](https://www.mong
    ```bash
    npm run build
    ```
+
+---
+
+## ☁️ Vercel Deployment
+
+Nexus is configured for easy deployment on **Vercel** as two separate projects pointing to the same GitHub repository:
+
+### 1. Frontend (Client) Deployment
+Vercel handles React Single Page Applications (SPA) with a custom rewrite file. We have created a [vercel.json](file:///c:/Users/user/Desktop/Web%20Dev/SMIT-WAMD/Nexus/Client/vercel.json) inside the `/Client` directory to route all client-side URL refreshes (like `/dashboard/investor`, `/meetings`, `/chat`) back to `/index.html` to prevent `404: Page Not Found` errors.
+
+**Vercel Settings for Client:**
+- **Framework Preset:** Vite
+- **Root Directory:** `Client`
+- **Build Command:** `npm run build`
+- **Output Directory:** `dist`
+- **Environment Variables:**
+  - `VITE_BACKEND_URL`: Your deployed production backend URL (e.g., `https://nexus-api.vercel.app`)
+
+---
+
+### 2. Backend (Server) Deployment
+Express backend handles dynamic endpoints through serverless configuration using `@vercel/node`. We have created a [vercel.json](file:///c:/Users/user/Desktop/Web%20Dev/SMIT-WAMD/Nexus/Server/vercel.json) inside the `/Server` directory that maps all endpoints `/api/*` and routes to the Express handler exported in `server.js`.
+
+**Vercel Settings for Server:**
+- **Framework Preset:** Other / None (Node.js)
+- **Root Directory:** `Server`
+- **Environment Variables:**
+  - `MONGO_URI`: Your production MongoDB Connection String (e.g. MongoDB Atlas)
+  - `JWT_SECRET`: Random hash key for authentication cookies
+  - `CLOUDINARY_CLOUD_NAME`: Cloudinary cloud account name
+  - `CLOUDINARY_API_KEY`: Cloudinary API credential key
+  - `CLOUDINARY_API_SECRET`: Cloudinary API secret hash
+  - `FRONTEND_URL`: URL of your deployed frontend (e.g., `https://nexus-client.vercel.app`)
+
