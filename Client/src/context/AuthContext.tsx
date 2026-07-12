@@ -36,7 +36,7 @@ export const AuthContextProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const backendUrl = import.meta.env.VITE_BACKEND_URL || 
       (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
         ? "http://localhost:3000"
-        : "");
+        : "https://business-nexus-sigma.vercel.app");
 
     useEffect(() => {
         if (state.isAuth && state.user && state.user.id) {
